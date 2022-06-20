@@ -192,7 +192,7 @@ w = w * fs / (2*np.pi)
 filtered_noise = np.convolve(fir_filt, noise)
 # Normalize filtered noise
 filtered_noise = filtered_noise / np.max(np.abs(filtered_noise))
-# Remove the extra values added during convolution
+# Remove the extra values added during convolution from beginning/end
 filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
 # P Welch of filtered noise
 f_filt_noise, den_filt_noise = signal.welch(
