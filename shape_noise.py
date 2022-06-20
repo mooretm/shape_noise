@@ -6,7 +6,7 @@
     Version 1.0.0
     Written by: Travis M. Moore; Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Jun 17, 2022
+    Last Edited: Jun 2, 2022
 """
 
 # Import science packages
@@ -193,7 +193,7 @@ filtered_noise = np.convolve(fir_filt, noise)
 # Normalize filtered noise
 filtered_noise = filtered_noise / np.max(np.abs(filtered_noise))
 # Remove the extra values added during convolution
-filtered_noise = filtered_noise[:-offset]
+filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
 # P Welch of filtered noise
 f_filt_noise, den_filt_noise = signal.welch(
     filtered_noise, fs, nperseg=2048)
@@ -225,7 +225,7 @@ plt.show()
 # Amplitude Correction #
 ########################
 rms_stim = rms(stimulus)
-filtered_noise = doGate(sig=filtered_noise,rampdur=0.01,fs=fs)
+filtered_noise = doGate(sig=filtered_noise,rampdur=0.02,fs=fs)
 filtered_noise = doNormalize(filtered_noise)
 rms_filt_noise = rms(filtered_noise)
 amp_diff =  rms_stim / rms_filt_noise
@@ -236,6 +236,17 @@ adj_filtered_noise = filtered_noise * amp_diff
 f_adj_filt_noise, den_adj_filt_noise = signal.welch(
     adj_filtered_noise, fs, nperseg=2048)
 print(f"RMS of adjusted filtered noise: {rms(adj_filtered_noise)}")
+
+######################
+# Check for Clipping #
+######################
+clip_flag = False
+max_amp = np.max(abs(adj_filtered_noise))
+if max_amp > 1:
+    print("Oh no! Some values are clipping!\nCalibration file not created!")
+    clip_flag = True
+else:
+    print("No clipping! File OK!")
 
 
 #####################
@@ -263,5 +274,8 @@ plt.show()
 # Output #
 ##########
 # Write filtered noise to file
-file_out = file_name[:-4] + "_calibration.wav"
-wavfile.write(file_out, fs, adj_filtered_noise)
+if not clip_flag:
+    print("Writing calibration file...")
+    file_out = file_name[:-4] + "_calibration.wav"
+    wavfile.write(file_out, fs, adj_filtered_noise)
+    print("Done!")
