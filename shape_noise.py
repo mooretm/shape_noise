@@ -3,10 +3,10 @@
     RMS amplitude of the original stimulus. Useful for making 
     calibration noise for custom stimuli. 
 
-    Version 1.0.0
+    Version 2.0.0
     Written by: Travis M. Moore; Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Jun 2, 2022
+    Last Edited: Jun 21, 2022
 """
 
 # Import science packages
@@ -46,11 +46,33 @@ def import_stim_file():
     """ Select file using system file dialog 
         and read it into a dictionary.
     """
+    global audio_dtype
+    global audio_file
+    global wav_dict
+    # Dictionary of data types and ranges
+    wav_dict = {
+        'float32': (-1.0, 1.0),
+        'int32': (-2147483648, 2147483647),
+        'int16': (-32768, 32767),
+        'uint8': (0, 255)
+    }
+
     file_name = filedialog.askopenfilename(initialdir=_thisDir)
-    fs, stimulus = wavfile.read(file_name)
-    print(type(stimulus))
-    print(type(stimulus[0]))
-    return fs, stimulus, file_name
+    fs, audio_file = wavfile.read(file_name)
+    audio_dtype = np.dtype(audio_file[0])
+    print(f"Incoming data type: {audio_dtype}")
+
+    # Immediately convert to float64 for manipulating
+    if audio_dtype == 'float64':
+        pass
+    else:
+        # 1. Convert to float64
+        audio_file = audio_file.astype(np.float64)
+        print(f"Forced audio data type: {type(audio_file[0])}")
+        # 2. Divide by original dtype max val
+        audio_file = audio_file / wav_dict[str(audio_dtype)][1]
+
+    return fs, audio_file, file_name
 
 
 def mk_wgn(fs,dur):
@@ -58,11 +80,11 @@ def mk_wgn(fs,dur):
     """
     random.seed(4)
     wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
-    wgn = doNormalize(wgn,fs)
+    wgn = doNormalize(wgn)
     return wgn
 
 
-def doNormalize(sig,fs):
+def doNormalize(sig):
     sig = sig - np.mean(sig) # remove DC offset
     sig = sig / np.max(abs(sig)) # normalize
     return sig
@@ -135,10 +157,8 @@ os.chdir(_thisDir)
 
 # Read in signal from file
 fs, stimulus, file_name = import_stim_file()
-#stimulus = doNormalize(stimulus,fs)
 dur_stim = len(stimulus) / fs
 t_stim = np.arange(0,dur_stim,1/fs)
-
 
 # Make noise
 noise = mk_wgn(fs,3)
@@ -229,7 +249,7 @@ plt.show()
 ########################
 rms_stim = rms(stimulus)
 filtered_noise = doGate(sig=filtered_noise,rampdur=0.02,fs=fs)
-filtered_noise = doNormalize(filtered_noise,fs)
+filtered_noise = doNormalize(filtered_noise)
 rms_filt_noise = rms(filtered_noise)
 amp_diff =  rms_stim / rms_filt_noise
 print(f"RMS of stimulus: {rms_stim}")
@@ -276,6 +296,15 @@ plt.show()
 ##########
 # Output #
 ##########
+# Convert back to original audio data type
+# Multiply by original data type max
+sig = adj_filtered_noise # just to shorten the name
+sig = sig * wav_dict[str(audio_dtype)][1]
+if audio_dtype != 'float32':
+    # Round to return to integer values
+    sig = np.round(sig)
+# Convert back to original data type
+sig = sig.astype(audio_dtype)
 # Write filtered noise to file
 if not clip_flag:
     print("Writing calibration file...")

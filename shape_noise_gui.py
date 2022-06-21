@@ -3,10 +3,10 @@
     RMS amplitude of the original stimulus. Useful for making 
     calibration noise for custom stimuli. 
 
-    Version 1.0.0
+    Version 2.0.0
     Written by: Travis M. Moore; Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Jun 2, 2022
+    Last Edited: Jun 21, 2022
 """
 
 # Import science packages
@@ -14,26 +14,14 @@ import numpy as np
 import random
 from scipy.io import wavfile
 from scipy import signal
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg,
-    NavigationToolbar2Tk
-)
-
 from matplotlib import pyplot as plt
-
 
 # Import system packages
 import sys
 import os
 
 # Import GUI packages
-import tkinter as tk
-from tkinter import ttk
 from tkinter import filedialog
-from tkinter import messagebox
 
 
 #############
@@ -58,9 +46,33 @@ def import_stim_file():
     """ Select file using system file dialog 
         and read it into a dictionary.
     """
+    global audio_dtype
+    global audio_file
+    global wav_dict
+    # Dictionary of data types and ranges
+    wav_dict = {
+        'float32': (-1.0, 1.0),
+        'int32': (-2147483648, 2147483647),
+        'int16': (-32768, 32767),
+        'uint8': (0, 255)
+    }
+
     file_name = filedialog.askopenfilename(initialdir=_thisDir)
-    fs, stimulus = wavfile.read(file_name)
-    return fs, stimulus, file_name
+    fs, audio_file = wavfile.read(file_name)
+    audio_dtype = np.dtype(audio_file[0])
+    print(f"Incoming data type: {audio_dtype}")
+
+    # Immediately convert to float64 for manipulating
+    if audio_dtype == 'float64':
+        pass
+    else:
+        # 1. Convert to float64
+        audio_file = audio_file.astype(np.float64)
+        print(f"Forced audio data type: {type(audio_file[0])}")
+        # 2. Divide by original dtype max val
+        audio_file = audio_file / wav_dict[str(audio_dtype)][1]
+
+    return fs, audio_file, file_name
 
 
 def mk_wgn(fs,dur):
@@ -72,7 +84,7 @@ def mk_wgn(fs,dur):
     return wgn
 
 
-def doNormalize(sig,fs=48000):
+def doNormalize(sig):
     sig = sig - np.mean(sig) # remove DC offset
     sig = sig / np.max(abs(sig)) # normalize
     return sig
@@ -143,61 +155,20 @@ def rms(sig):
 _thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
-# Begin root window
-root = tk.Tk()
-root.title("Noise Shaping Tool")
-root.withdraw()
-
-frm_options = {'padx':10, 'pady':10}
-
-lblfrm_plots = ttk.LabelFrame(root, text="Signal Plots")
-lblfrm_plots.grid(column=0, row=0, **frm_options)
-
-lblfrm_data = ttk.LabelFrame(root, text="Signal Data")
-lblfrm_data.grid(column=0, row=1, **frm_options)
-
-
-
-test_data = np.arange(0,100)
-
-figure = Figure(figsize=(4,6), dpi=100)
-figure_canvas = FigureCanvasTkAgg(figure)
-NavigationToolbar2Tk(figure_canvas)
-axes = figure.add_subplot()
-axes.plot(test_data)
-axes.set_title("Test")
-axes.set_ylabel("Amp")
-axes.set_xlabel("Time")
-figure_canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
-
-
-
-
-
-
-
 # Read in signal from file
-def get_stim():
-    fs, stimulus, file_name = import_stim_file()
-    stimulus = doNormalize(stimulus)
-    dur_stim = len(stimulus) / fs
-    t_stim = np.arange(0,dur_stim,1/fs)
-
-    return fs, stimulus, dur_stim, t_stim
-
+fs, stimulus, file_name = import_stim_file()
+dur_stim = len(stimulus) / fs
+t_stim = np.arange(0,dur_stim,1/fs)
 
 # Make noise
-def make_noise(fs):
-    noise = mk_wgn(fs,3)
-    dur_noise = len(noise) / fs
-    t_noise = np.arange(0,dur_noise,1/fs)
-    return noise, dur_noise, t_noise
+noise = mk_wgn(fs,3)
+dur_noise = len(noise) / fs
+t_noise = np.arange(0,dur_noise,1/fs)
 
 # P Welch of noise and stimulus tones
 f_noise, den_noise = signal.welch(noise, fs, nperseg=2048)
 f_stim, den_stim = signal.welch(stimulus, fs, nperseg=2048)
 
-"""
 # Plot unprocessed signal data
 fig1, axs1 = plt.subplots(nrows=2,ncols=2)
 # Normalized stimulus in the time domain
@@ -213,7 +184,7 @@ axs1[1,0].set_title('Noise Waveform')
 axs1[1,1].semilogy(f_noise, np.sqrt(den_noise))
 axs1[1,1].set_title('Spectral Density of Noise')
 plt.show()
-"""
+
 
 #################################################
 # Create FIR from spectral density of stimulus  #
@@ -244,12 +215,12 @@ filtered_noise = np.convolve(fir_filt, noise)
 # Normalize filtered noise
 filtered_noise = filtered_noise / np.max(np.abs(filtered_noise))
 # Remove the extra values added during convolution from beginning/end
-filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
+filtered_noise = filtered_noise[:-offset]
+#filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
 # P Welch of filtered noise
 f_filt_noise, den_filt_noise = signal.welch(
     filtered_noise, fs, nperseg=2048)
 
-"""
 # Plot filter data
 fig2, axs2 = plt.subplots(nrows=2, ncols=3)
 # FIR filter shape
@@ -271,7 +242,6 @@ axs2[1,1].plot(f_filt_noise, den_filt_noise)
 axs2[1,1].set_title('Spectral Density of Filtered Noise')
 # Show Fig2
 plt.show()
-"""
 
 
 ########################
@@ -326,26 +296,18 @@ plt.show()
 ##########
 # Output #
 ##########
+# Convert back to original audio data type
+# Multiply by original data type max
+sig = adj_filtered_noise # just to shorten the name
+sig = sig * wav_dict[str(audio_dtype)][1]
+if audio_dtype != 'float32':
+    # Round to return to integer values
+    sig = np.round(sig)
+# Convert back to original data type
+sig = sig.astype(audio_dtype)
 # Write filtered noise to file
 if not clip_flag:
     print("Writing calibration file...")
     file_out = file_name[:-4] + "_calibration.wav"
     wavfile.write(file_out, fs, adj_filtered_noise)
     print("Done!")
-
-root.update_idletasks()
-#root.attributes('-topmost',1)
-window_width = root.winfo_width()
-window_height = root.winfo_height()
-# get the screen dimension
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-# find the center point
-center_x = int(screen_width/2 - window_width / 2)
-center_y = int(screen_height/2 - window_height / 2)
-# set the position of the window to the center of the screen
-root.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
-root.resizable(False, False)
-root.deiconify()
-
-root.mainloop()
