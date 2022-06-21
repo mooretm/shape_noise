@@ -14,14 +14,26 @@ import numpy as np
 import random
 from scipy.io import wavfile
 from scipy import signal
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk
+)
+
 from matplotlib import pyplot as plt
+
 
 # Import system packages
 import sys
 import os
 
 # Import GUI packages
+import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog
+from tkinter import messagebox
 
 
 #############
@@ -48,8 +60,6 @@ def import_stim_file():
     """
     file_name = filedialog.askopenfilename(initialdir=_thisDir)
     fs, stimulus = wavfile.read(file_name)
-    print(type(stimulus))
-    print(type(stimulus[0]))
     return fs, stimulus, file_name
 
 
@@ -58,11 +68,11 @@ def mk_wgn(fs,dur):
     """
     random.seed(4)
     wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
-    wgn = doNormalize(wgn,fs)
+    wgn = doNormalize(wgn)
     return wgn
 
 
-def doNormalize(sig,fs):
+def doNormalize(sig,fs=48000):
     sig = sig - np.mean(sig) # remove DC offset
     sig = sig / np.max(abs(sig)) # normalize
     return sig
@@ -133,22 +143,61 @@ def rms(sig):
 _thisDir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(_thisDir)
 
+# Begin root window
+root = tk.Tk()
+root.title("Noise Shaping Tool")
+root.withdraw()
+
+frm_options = {'padx':10, 'pady':10}
+
+lblfrm_plots = ttk.LabelFrame(root, text="Signal Plots")
+lblfrm_plots.grid(column=0, row=0, **frm_options)
+
+lblfrm_data = ttk.LabelFrame(root, text="Signal Data")
+lblfrm_data.grid(column=0, row=1, **frm_options)
+
+
+
+test_data = np.arange(0,100)
+
+figure = Figure(figsize=(4,6), dpi=100)
+figure_canvas = FigureCanvasTkAgg(figure)
+NavigationToolbar2Tk(figure_canvas)
+axes = figure.add_subplot()
+axes.plot(test_data)
+axes.set_title("Test")
+axes.set_ylabel("Amp")
+axes.set_xlabel("Time")
+figure_canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
+
+
+
+
+
+
+
 # Read in signal from file
-fs, stimulus, file_name = import_stim_file()
-#stimulus = doNormalize(stimulus,fs)
-dur_stim = len(stimulus) / fs
-t_stim = np.arange(0,dur_stim,1/fs)
+def get_stim():
+    fs, stimulus, file_name = import_stim_file()
+    stimulus = doNormalize(stimulus)
+    dur_stim = len(stimulus) / fs
+    t_stim = np.arange(0,dur_stim,1/fs)
+
+    return fs, stimulus, dur_stim, t_stim
 
 
 # Make noise
-noise = mk_wgn(fs,3)
-dur_noise = len(noise) / fs
-t_noise = np.arange(0,dur_noise,1/fs)
+def make_noise(fs):
+    noise = mk_wgn(fs,3)
+    dur_noise = len(noise) / fs
+    t_noise = np.arange(0,dur_noise,1/fs)
+    return noise, dur_noise, t_noise
 
 # P Welch of noise and stimulus tones
 f_noise, den_noise = signal.welch(noise, fs, nperseg=2048)
 f_stim, den_stim = signal.welch(stimulus, fs, nperseg=2048)
 
+"""
 # Plot unprocessed signal data
 fig1, axs1 = plt.subplots(nrows=2,ncols=2)
 # Normalized stimulus in the time domain
@@ -164,7 +213,7 @@ axs1[1,0].set_title('Noise Waveform')
 axs1[1,1].semilogy(f_noise, np.sqrt(den_noise))
 axs1[1,1].set_title('Spectral Density of Noise')
 plt.show()
-
+"""
 
 #################################################
 # Create FIR from spectral density of stimulus  #
@@ -195,12 +244,12 @@ filtered_noise = np.convolve(fir_filt, noise)
 # Normalize filtered noise
 filtered_noise = filtered_noise / np.max(np.abs(filtered_noise))
 # Remove the extra values added during convolution from beginning/end
-filtered_noise = filtered_noise[:-offset]
-#filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
+filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
 # P Welch of filtered noise
 f_filt_noise, den_filt_noise = signal.welch(
     filtered_noise, fs, nperseg=2048)
 
+"""
 # Plot filter data
 fig2, axs2 = plt.subplots(nrows=2, ncols=3)
 # FIR filter shape
@@ -222,6 +271,7 @@ axs2[1,1].plot(f_filt_noise, den_filt_noise)
 axs2[1,1].set_title('Spectral Density of Filtered Noise')
 # Show Fig2
 plt.show()
+"""
 
 
 ########################
@@ -229,7 +279,7 @@ plt.show()
 ########################
 rms_stim = rms(stimulus)
 filtered_noise = doGate(sig=filtered_noise,rampdur=0.02,fs=fs)
-filtered_noise = doNormalize(filtered_noise,fs)
+filtered_noise = doNormalize(filtered_noise)
 rms_filt_noise = rms(filtered_noise)
 amp_diff =  rms_stim / rms_filt_noise
 print(f"RMS of stimulus: {rms_stim}")
@@ -282,3 +332,20 @@ if not clip_flag:
     file_out = file_name[:-4] + "_calibration.wav"
     wavfile.write(file_out, fs, adj_filtered_noise)
     print("Done!")
+
+root.update_idletasks()
+#root.attributes('-topmost',1)
+window_width = root.winfo_width()
+window_height = root.winfo_height()
+# get the screen dimension
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+# find the center point
+center_x = int(screen_width/2 - window_width / 2)
+center_y = int(screen_height/2 - window_height / 2)
+# set the position of the window to the center of the screen
+root.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+root.resizable(False, False)
+root.deiconify()
+
+root.mainloop()
