@@ -78,7 +78,7 @@ def import_stim_file():
 def mk_wgn(fs,dur):
     """ Function to generate white Gaussian noise.
     """
-    random.seed(4)
+    #random.seed(4)
     wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
     wgn = doNormalize(wgn)
     return wgn
@@ -159,9 +159,12 @@ os.chdir(_thisDir)
 fs, stimulus, file_name = import_stim_file()
 dur_stim = len(stimulus) / fs
 t_stim = np.arange(0,dur_stim,1/fs)
-
+print(f"Len stim: {len(stimulus)}")
+print(f"Dur stim: {dur_stim}")
+print(f"Len stim time vector: {len(t_stim)}")
+print(f"FS: {fs}")
 # Make noise
-noise = mk_wgn(fs,3)
+noise = mk_wgn(fs,30)
 dur_noise = len(noise) / fs
 t_noise = np.arange(0,dur_noise,1/fs)
 
