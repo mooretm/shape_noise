@@ -5,7 +5,7 @@
 
     Version 3.0.1
     Written by: Travis M. Moore
-    Written by: Daniel Smieja
+    Contributor: Daniel Smieja
     Created: Jun 17, 2022
     Last Edited: Jun 28, 2022
 """
