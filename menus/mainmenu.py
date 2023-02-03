@@ -28,6 +28,10 @@ class MainMenu(tk.Menu):
             label="Import Audio...",
             command=self._event('<<FileImport>>')
         )
+        file_menu.add_command(
+            label="Export Noise...",
+            command=self._event('<<FileExport>>')
+        )
         file_menu.add_separator()
         file_menu.add_command(
             label="Quit",
@@ -76,7 +80,7 @@ class MainMenu(tk.Menu):
             'Special thanks to: Daniel Smieja\n'
             'Version 4.0.0\n'
             'Created: Jun 17, 2022\n'
-            'Last edited: Feb 01, 2023'
+            'Last edited: Feb 03, 2023'
         )
         messagebox.showinfo(
             title='About',

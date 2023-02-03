@@ -15,7 +15,9 @@
 ###########
 # Import system packages
 from pathlib import Path
-import time
+
+# Import audio packages
+import soundfile as sf
 
 # Import GUI packages
 import tkinter as tk
@@ -25,6 +27,7 @@ from tkinter import filedialog
 
 # Import data science packages
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.figure import Figure
@@ -32,9 +35,13 @@ from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 # Import custom modules
+# Menus
 from menus import mainmenu
+# Models
 from models import audiomodel
 from models import noisemodel
+from models import writemodel
+# Views
 from views import mainview
 
 
@@ -81,6 +88,9 @@ class Application(tk.Tk):
         # Load noisemodel
         self.n = noisemodel.NoiseShaper()
 
+        # Load writemodel
+        self.w = writemodel.WriteModel()
+
         # Load main view
         self.main_view = mainview.MainFrame(self, self._vars)
         self.main_view.grid(row=5, column=5)
@@ -95,6 +105,7 @@ class Application(tk.Tk):
         event_callbacks = {
             # File menu
             '<<FileImport>>': lambda _: self._import(),
+            '<<FileExport>>': lambda _: self._export(),
             '<<FileQuit>>': lambda _: self._quit(),
 
             # Tools menu
@@ -154,6 +165,23 @@ class Application(tk.Tk):
             self._vars["in_channels"].set(f"Channels: {len(self.a.channels)}")
         except FileNotFoundError:
             return
+
+
+    def _export(self):
+        """ Write all filtered noises as single .wav file.
+        """
+        # Convert to df
+        df = pd.DataFrame(self.filtered_noises)
+        # Create output file name based on input file name
+        filename = self.a.name[:-4] + '_cal.wav'
+        # Write .wav to current directory
+        sf.write(filename, df, self.a.fs)
+
+        # Update labels with exported audio info
+        self._vars["out_file"].set(f"Name: {filename}")
+        self._vars["out_datatype"].set(f"Data Type: {str(df.dtypes[0])}")
+        self._vars["out_samplingrate"].set(f"Sampling Rate: {self.a.fs} Hz")
+        self._vars["out_channels"].set(f"Channels: {len(df.columns)}")
 
 
     ########################
@@ -220,13 +248,16 @@ class Application(tk.Tk):
             master=self.main_view.lblfrm_plots)
         self.canvas.get_tk_widget().grid(column=0, row=5)
 
+        self.update()
+
 
     #######################
     # Help Menu Functions #
     #######################
     def _help(self):
         messagebox.showinfo(title="Not Ready Yet!",
-            message="Help documentation not yet written!")
+            message="Help documentation not yet written!" +
+                "\nGo find Travis (unless he's cranky...)")
 
 
 if __name__ == "__main__":
