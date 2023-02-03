@@ -1,13 +1,11 @@
-""" Main frame for Noise Shaper.
+""" Main view for Noise Shaper.
 """
 
 ###########
 # Imports #
 ###########
 # Import GUI packages
-import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox
 
 # Import data science packages
 import matplotlib
@@ -38,7 +36,8 @@ class MainFrame(ttk.Frame):
         self.frm_main.grid()
 
         # Data labelframe
-        self.lfrm_Data = ttk.LabelFrame(self.frm_main, text="Audio File Information")
+        self.lfrm_Data = ttk.LabelFrame(self.frm_main, 
+            text="Audio File Information")
         self.lfrm_Data.grid(row=0, column=0, sticky='nsew', **options_data)
 
         # INput labelrame
@@ -50,8 +49,10 @@ class MainFrame(ttk.Frame):
         self.lfrm_Output.grid(row=1, column=1, **options_data)
 
         # Plot labelframe
-        self.lblfrm_plots = ttk.LabelFrame(self.frm_main, text="Spectrum Comparison Plot")
-        self.lblfrm_plots.grid(column=0, row=5, ipadx=5, ipady=5, padx=10, pady=10)
+        self.lblfrm_plots = ttk.LabelFrame(self.frm_main, 
+            text="Power Spectral Density Comparison Plot")
+        self.lblfrm_plots.grid(column=0, row=5, ipadx=5, ipady=5, padx=10, 
+            pady=10)
 
 
         ##################
@@ -88,10 +89,7 @@ class MainFrame(ttk.Frame):
         # Create plot
         self.fig = Figure(figsize=(5.5,4), dpi=75)
         self.ax = self.fig.add_subplot(1,1,1)
-        self.ax.set_ylabel("Amplitude")
+        self.ax.set_ylabel("Power Spectral Density")
         self.ax.set_xlabel("Frequency (Hz)")
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.lblfrm_plots)
         self.canvas.get_tk_widget().grid(column=0, row=5, **options_data)
-        #self.canvas.draw()
-        #toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
-        #toolbar.update()

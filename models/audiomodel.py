@@ -57,9 +57,6 @@ class Audio:
                 print("audiomodel: No file imported!")
                 raise FileNotFoundError
 
-        # Convert from float64 to float32
-        #self.signal = self.signal.astype('float32')
-
         # Get number of channels
         self.num_channels = self.signal.shape[1]
         self.channels = np.array(range(1, self.num_channels+1))
@@ -87,9 +84,12 @@ class Audio:
         # Get presentation level
         if not level:
             for chan in range(0, self.num_channels):
-                temp[:, chan] = temp[:, chan] - np.mean(temp[:, chan]) # remove DC offset
-                temp[:, chan] = temp[:, chan] / np.max(np.abs(temp[:, chan])) # normalize
-                temp[:, chan] = temp[:, chan] / self.num_channels # account for num channels
+                # remove DC offset
+                temp[:, chan] = temp[:, chan] - np.mean(temp[:, chan]) 
+                # normalize
+                temp[:, chan] = temp[:, chan] / np.max(np.abs(temp[:, chan]))
+                # account for num channels
+                temp[:, chan] = temp[:, chan] / self.num_channels 
                 #print(f"\nMax of signal: {np.max(np.abs(self.signal[:, chan]))}")
                 #print(f"Max of temp: {np.max(np.abs(temp[:, chan]))}")
         else:
@@ -119,5 +119,3 @@ class Audio:
         """ Stop audio presentation.
         """
         sd.stop()
-
-

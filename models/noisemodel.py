@@ -21,54 +21,34 @@ import sys
 class NoiseShaper:
     """ Class to create noise, filter, and perform filtering.
     """
-    def __init__(self, audio_object):
-        
-        self.audio = audio_object
 
-        # Create dicts to hold info for each channel of the 
-        # input audio file
-        self.filtered_noises = {}
-        self.noise_pwelch = {}
-        self.stim_pwelch = {}
-
-
-    def _shape_noise(self):
+    def _shape_noise(self, audio, fs):
         """ Create white Gaussian noise. Create filter shaped like 
             the spectrum of the provided audio file. Pass the 
             noise through the filter. Adjust RMS amplitude of noise 
             to match RMS amplitude of audio file.
         """
-        for ii in range(0, len(self.audio.channels)):
-            # Get channel number
-            self.current_channel = ii
-            print(f"\nProcessing channel {self.current_channel+1} " +
-                f"of {len(self.audio.channels)}")
+        self.audio = audio
+        self.fs = fs
 
-            # Create noise
-            self._create_noise()
+        # Create noise
+        self._create_noise()
 
-            # Create filtered noise
-            self._create_filter()
-
-            # Fill dict with iteration values
-            self.filtered_noises[ii] = self.adj_filtered_noise
-            self.noise_pwelch[ii] = (self.f_adj_filt_noise, 
-                self.den_adj_filt_noise)
-            self.stim_pwelch[ii] = (self.f_stim, self.den_stim)
+        # Create filtered noise
+        self._create_filter()
 
 
     def _create_noise(self):
-        print("noisemodel: Creating white noise...")
+        print("\nnoisemodel: Creating white noise...")
         # Create noise
-        self.noise = self.mk_wgn(self.audio.fs,30)
-        self.dur_noise = len(self.noise) / self.audio.fs
-        self.t_noise = np.arange(0,self.dur_noise,1/self.audio.fs)
+        self.noise = self.mk_wgn(self.fs,30)
+        self.dur_noise = len(self.noise) / self.fs
+        self.t_noise = np.arange(0,self.dur_noise,1/self.fs)
 
         # P Welch of noise and audio file
-        #f_noise, den_noise = signal.welch(self.noise, self.audio.fs, nperseg=2048)
+        #f_noise, den_noise = signal.welch(self.noise, self.fs, nperseg=2048)
         self.f_stim, self.den_stim = signal.welch(
-            self.audio.signal[:, self.current_channel], 
-            self.audio.fs, nperseg=2048)
+            self.audio, self.fs, nperseg=2048)
         print("noisemodel: Done")
 
 
@@ -89,7 +69,7 @@ class NoiseShaper:
         """
 
         # Find delay introduced by filter
-        #filt_delay = self.filter_delay(num_taps, self.audio.fs)
+        #filt_delay = self.filter_delay(num_taps, self.fs)
         #print(f"Filter delay (s): {filt_delay}")
 
         # Create the filter
@@ -100,8 +80,8 @@ class NoiseShaper:
 
         # FIR frequency response
         w, h = signal.freqz(fir_filt)
-        w = w * self.audio.fs / (2*np.pi)
-        print("Done")
+        w = w * self.fs / (2*np.pi)
+        print("noisemodel: Done")
 
         # Call function to apply filter
         self._apply_filter(fir_filt, offset)
@@ -110,7 +90,7 @@ class NoiseShaper:
     def _apply_filter(self, filter, offset):
         """ Pass noise through filter.
         """
-        print("noisemodel: Applying filter to noise...")
+        print("noisemodel: Filtering noise...")
         # Apply FIR to noise
         filtered_noise = np.convolve(filter, self.noise)
         # Normalize filtered noise
@@ -119,7 +99,7 @@ class NoiseShaper:
         filtered_noise = filtered_noise[:-offset]
         # P Welch of filtered noise
         f_filt_noise, den_filt_noise = signal.welch(
-            filtered_noise, self.audio.fs, nperseg=2048)
+            filtered_noise, self.fs, nperseg=2048)
         print("noisemodel: Done")
 
         self._correct_amplitude(filtered_noise)
@@ -127,21 +107,21 @@ class NoiseShaper:
 
     def _correct_amplitude(self, filtered_noise):
         print("noisemodel: Matching amplitudes...")
-        rms_stim = self.rms(self.audio.signal[:, self.current_channel])
+        rms_stim = self.rms(self.audio)
         filtered_noise = self.doGate(sig=filtered_noise,
-            rampdur=0.02,fs=self.audio.fs)
+            rampdur=0.02,fs=self.fs)
         filtered_noise = self.doNormalize(filtered_noise)
         rms_filt_noise = self.rms(filtered_noise)
         amp_diff =  rms_stim / rms_filt_noise
-        print(f"RMS of stimulus: {rms_stim}")
-        print(f"RMS of filtered noise: {rms_filt_noise}")
-        print(f"RMS diff: {amp_diff}")
+        print(f"noisemodel: RMS of stimulus: {np.round(rms_stim, 5)}")
+        #print(f"noisemodel: RMS of filtered noise: {np.round(rms_filt_noise, 5)}")
+        #print(f"noisemodel: RMS diff: {np.round(amp_diff, 5)}")
         self.adj_filtered_noise = filtered_noise * amp_diff
         self.f_adj_filt_noise, self.den_adj_filt_noise = signal.welch(
-            self.adj_filtered_noise, self.audio.fs, nperseg=2048)
-        print(f"RMS of adjusted filtered noise: " +
-            f"{self.rms(self.adj_filtered_noise)}")
-        print("Done")
+            self.adj_filtered_noise, self.fs, nperseg=2048)
+        print(f"noisemodel: RMS of adjusted filtered noise: " +
+            f"{np.round(self.rms(self.adj_filtered_noise), 5)}")
+        print("noisemodel: Done")
 
 
     ###################################
@@ -281,86 +261,3 @@ class NoiseShaper:
         """
         theRMS = np.sqrt(np.mean(np.square(sig)))
         return theRMS
-
-
-    def setRMS(self, sig, amp, eq='n'):
-        """
-            Set RMS level of a 1-channel or 2-channel signal.
-        
-            SIG: a 1-channel or 2-channel signal
-            AMP: the desired amplitude to be applied to 
-                each channel. Note this will be the RMS 
-                per channel, not the total of both channels.
-            EQ: takes 'y' or 'n'. Whether or not to equalize 
-                the levels in a 2-channel signal. For example, 
-                a signal with an ILD would lose the ILD with 
-                EQ='y', so the default in 'n'.
-
-            EXAMPLE: 
-            Create a 2 channel signal
-            [t, tone1] = mkTone(200,0.1,30,48000)
-            [t, tone2] = mkTone(100,0.1,0,48000)
-            combo = np.array([tone1, tone2])
-            adjusted = setRMS(combo,-15)
-
-            Written by: Travis M. Moore
-            Created: Jan. 10, 2022
-            Last edited: May 17, 2022
-        """
-        if len(sig.shape) == 1:
-            rmsdb = self.mag2db(self.rms(sig))
-            refdb = amp
-            diffdb = np.abs(rmsdb - refdb)
-            if rmsdb > refdb:
-                sigAdj = sig / self.db2mag(diffdb)
-            elif rmsdb < refdb:
-                sigAdj = sig * self.db2mag(diffdb)
-            # Edit 5/17/22
-            # Added handling for when rmsdb == refdb
-            elif rmsdb == refdb:
-                sigAdj = sig
-            return sigAdj
-            
-        elif len(sig.shape) == 2:
-            rmsdbLeft = self.mag2db(self.rms(sig[0]))
-            rmsdbRight = self.mag2db(self.rms(sig[1]))
-
-            ILD = np.abs(rmsdbLeft - rmsdbRight) # get lvl diff
-
-            # Determine lvl advantage
-            if rmsdbLeft > rmsdbRight:
-                lvlAdv = 'left'
-                #print("Adv: %s" % lvlAdv)
-            elif rmsdbRight > rmsdbLeft:
-                lvlAdv = 'right'
-                #print("Adv: %s" % lvlAdv)
-            elif rmsdbLeft == rmsdbRight:
-                lvlAdv = None
-
-            #refdb = amp - 3 # apply half amp to each channel
-            refdb = amp
-            diffdbLeft = np.abs(rmsdbLeft - refdb)
-            diffdbRight = np.abs(rmsdbRight - refdb)
-
-            # Adjust left channel
-            if rmsdbLeft > refdb:
-                sigAdjLeft = sig[0] / self.db2mag(diffdbLeft)
-            elif rmsdbLeft < refdb:
-                sigAdjLeft = sig[0] * self.db2mag(diffdbLeft)
-            # Adjust right channel
-            if rmsdbRight > refdb:
-                sigAdjRight = sig[1] / self.db2mag(diffdbRight)
-            elif rmsdbRight < refdb:
-                sigAdjRight = sig[1] * self.db2mag(diffdbRight)
-
-            # If there is a lvl difference to maintain across channels
-            if eq == 'n':
-                if lvlAdv == 'left':
-                    sigAdjLeft = sigAdjLeft * self.db2mag(ILD/2)
-                    sigAdjRight = sigAdjRight / self.db2mag(ILD/2)
-                elif lvlAdv == 'right':
-                    sigAdjLeft = sigAdjLeft / self.db2mag(ILD/2)
-                    sigAdjRight = sigAdjRight * self.db2mag(ILD/2)
-
-            sigBothAdj = np.array([sigAdjLeft, sigAdjRight])
-            return sigBothAdj

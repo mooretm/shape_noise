@@ -73,7 +73,7 @@ class MainMenu(tk.Menu):
         about_message = 'Noise Shaper'
         about_detail = (
             'Written by: Travis M. Moore\n'
-            'Contributors: Daniel Smieja\n'
+            'Special thanks to: Daniel Smieja\n'
             'Version 4.0.0\n'
             'Created: Jun 17, 2022\n'
             'Last edited: Feb 01, 2023'

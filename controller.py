@@ -5,7 +5,7 @@
 
     Version 4.0.0
     Written by: Travis M. Moore
-    Contributor: Daniel Smieja
+    Special thanks to: Daniel Smieja
     Created: Jun 17, 2022
     Last Edited: Feb 02, 2023
 """
@@ -68,9 +68,18 @@ class Application(tk.Tk):
             'out_channels': tk.StringVar(value='Channels:')
         }
 
+        # Create dicts to hold info for each channel of the 
+        # input audio file
+        self.filtered_noises = {}
+        self.noise_pwelch = {}
+        self.stim_pwelch = {}
+
         # Load menus
         menu = mainmenu.MainMenu(self)
         self.config(menu=menu)
+
+        # Load noisemodel
+        self.n = noisemodel.NoiseShaper()
 
         # Load main view
         self.main_view = mainview.MainFrame(self, self._vars)
@@ -93,6 +102,9 @@ class Application(tk.Tk):
 
             # Help menu
             '<<HelpHelp>>': lambda _: self._help(),
+
+            # noisemodel
+            '<<NoisePlot>>': lambda _: self._plot_spectra(),
         }
 
         # Bind callbacks to sequences
@@ -160,58 +172,53 @@ class Application(tk.Tk):
             )
             return
 
-        self.status_var.set("Status: Working...")
-        self.update_idletasks()
+        for ii in range(0, len(self.a.channels)):
+            self.status_var.set(f"Status: Processing channel {ii+1}...")
+            self.update_idletasks()
 
-        # Create shaped noise
-        self.n = noisemodel.NoiseShaper(self.a)
-        self.n._shape_noise()
+            # Create shaped noise
+            self.n._shape_noise(self.a.signal[:, ii], self.a.fs)
 
-        self.status_var.set("Status: Ready")
-        self.update_idletasks()
+            # Fill dicts with iteration values
+            self.filtered_noises[ii] = self.n.adj_filtered_noise
+            self.noise_pwelch[ii] = (self.n.f_adj_filt_noise, 
+                self.n.den_adj_filt_noise)
+            self.stim_pwelch[ii] = (self.n.f_stim, self.n.den_stim)
 
-        # Plot spectra
-        self._plot_spectra()
+            # Plot spectra
+            self._plot_spectra(channel=ii)
+            self.update_idletasks()
+
+        self.status_var.set(f"Status: Ready")
 
 
-    def _plot_spectra(self):
+    def _plot_spectra(self, channel):
         """ Plot spectrum of original audio and shaped noise 
             for visual inspection.
         """
-        for ii in range(0,len(self.a.channels)):
-            self.status_var.set(f"Status: Plotting...")
-            self.update_idletasks()
+        # Create figure object
+        self.fig = Figure(figsize=(5.5,4), dpi=75)
+        self.ax = self.fig.add_subplot(1,1,1)
 
-            # Create figure object
-            self.fig = Figure(figsize=(5.5,4), dpi=75)
-            self.ax = self.fig.add_subplot(1,1,1)
+        # Create stimulus axes
+        self.ax.plot(self.stim_pwelch[channel][0],
+            20*np.log10(self.stim_pwelch[channel][1]), color="blue", 
+            label="stimulus", linewidth=3)
 
-            # Create axes
-            self.ax.plot(self.n.stim_pwelch[ii][0],
-                20*np.log10(self.n.stim_pwelch[ii][1]), color="blue", 
-                label="stimulus", linewidth=3)
-            self.ax.plot(self.n.noise_pwelch[ii][0],
-                20*np.log10(self.n.noise_pwelch[ii][1]), 
-                ls=":", linewidth=3, color="orange", label="Filtered Noise")
-            #self.ax.set_title("Spectra after Amplitude Correction")
-            self.ax.set_xlabel("Frequency (Hz)")
-            self.ax.set_ylabel("Amplitude")
-            self.ax.set_title(f"Frequency Spectra: Channel {ii+1}")
-            self.ax.legend()
+        # Create noise axes
+        self.ax.plot(self.noise_pwelch[channel][0],
+            20*np.log10(self.noise_pwelch[channel][1]), 
+            ls=":", linewidth=3, color="orange", label="Filtered Noise")
 
-            self.canvas = FigureCanvasTkAgg(self.fig, 
-                master=self.main_view.lblfrm_plots)
-            #self.canvas.draw()
+        # Set axis labels
+        self.ax.set_xlabel("Frequency (Hz)")
+        self.ax.set_ylabel("Power Spectral Density")
+        self.ax.set_title(f"Power Spectral Density for Channel {channel+1}")
+        self.ax.legend()
 
-            #toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
-            #toolbar.update()
-
-            self.canvas.get_tk_widget().grid(column=0, row=5)
-            self.update_idletasks()
-
-            time.sleep(1)
-
-        self.status_var.set("Status: Ready")
+        self.canvas = FigureCanvasTkAgg(self.fig, 
+            master=self.main_view.lblfrm_plots)
+        self.canvas.get_tk_widget().grid(column=0, row=5)
 
 
     #######################
