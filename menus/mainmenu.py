@@ -58,7 +58,7 @@ class MainMenu(tk.Menu):
         )
         help_menu.add_command(
             label='Help',
-            command=self._event('<<Help>>')
+            command=self._event('<<HelpHelp>>')
         )
         # Add help menu to the menubar
         self.add_cascade(label="Help", menu=help_menu)

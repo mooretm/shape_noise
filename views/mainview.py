@@ -8,7 +8,6 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-from tkinter import filedialog
 
 # Import data science packages
 import matplotlib
@@ -42,10 +41,6 @@ class MainFrame(ttk.Frame):
         self.lfrm_Data = ttk.LabelFrame(self.frm_main, text="Audio File Information")
         self.lfrm_Data.grid(row=0, column=0, sticky='nsew', **options_data)
 
-        # # Button labelframe
-        # self.frm_buttons = ttk.LabelFrame(self.frm_main, text="Controls")
-        # self.frm_buttons.grid(row=1, column=0, **options_data)
-
         # INput labelrame
         self.lfrm_Input = ttk.LabelFrame(self.lfrm_Data, text="Imported File")
         self.lfrm_Input.grid(row=1, column=0, **options_data)
@@ -62,14 +57,6 @@ class MainFrame(ttk.Frame):
         ##################
         # Create Widgets #
         ##################
-        # # Shape noise button
-        # btn_filter = ttk.Button(self.frm_buttons, text="Shape Noise")
-        # btn_filter.grid(row=5, column=5, padx=10)
-
-        # # Save button
-        # btn_get_class = ttk.Button(self.frm_buttons, text="Save File")
-        # btn_get_class.grid(row=5, column=10, padx=(0,10))
-
         # INput file info labels
         # Name
         ttk.Label(self.lfrm_Input, textvariable=self._vars['in_file'], 
@@ -98,7 +85,6 @@ class MainFrame(ttk.Frame):
         ttk.Label(self.lfrm_Output, textvariable=self._vars['out_channels'],
             **options_lbls).grid(row=3, column=0, sticky='w')
 
-
         # Create plot
         self.fig = Figure(figsize=(5.5,4), dpi=75)
         self.ax = self.fig.add_subplot(1,1,1)
@@ -109,5 +95,3 @@ class MainFrame(ttk.Frame):
         #self.canvas.draw()
         #toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
         #toolbar.update()
-
-       

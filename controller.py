@@ -7,15 +7,15 @@
     Written by: Travis M. Moore
     Contributor: Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Feb 01, 2023
+    Last Edited: Feb 02, 2023
 """
 
 ###########
 # Imports #
 ###########
 # Import system packages
-import os
 from pathlib import Path
+import time
 
 # Import GUI packages
 import tkinter as tk
@@ -25,12 +25,16 @@ from tkinter import filedialog
 
 # Import data science packages
 import numpy as np
-import random
-from scipy import signal
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 # Import custom modules
 from menus import mainmenu
 from models import audiomodel
+from models import noisemodel
 from views import mainview
 
 
@@ -72,6 +76,12 @@ class Application(tk.Tk):
         self.main_view = mainview.MainFrame(self, self._vars)
         self.main_view.grid(row=5, column=5)
 
+        # Status label
+        self.status_var = tk.StringVar(value="Status: Ready")
+        ttk.Label(self, textvariable=self.status_var).grid(
+            row=10, column=5, padx=10, pady=(0,10), sticky='w'
+        )
+
         # Create callback dictionary
         event_callbacks = {
             # File menu
@@ -79,7 +89,10 @@ class Application(tk.Tk):
             '<<FileQuit>>': lambda _: self._quit(),
 
             # Tools menu
-            '<<ToolsShapeNoise>>': lambda _: self._shape_noise()
+            '<<ToolsShapeNoise>>': lambda _: self._shape_noise(),
+
+            # Help menu
+            '<<HelpHelp>>': lambda _: self._help(),
         }
 
         # Bind callbacks to sequences
@@ -112,26 +125,30 @@ class Application(tk.Tk):
         self.destroy()
 
 
-    #####################
-    # General Functions #
-    #####################
+    #######################
+    # File Menu Functions #
+    #######################
     def _import(self):
         """ Import audio file using audiomodel. Update _vars
             dict variables with audio data. 
         """
         self._full_path = Path(filedialog.askopenfilename())
-        self.a = audiomodel.Audio(self._full_path)
-        self._vars["in_file"].set(f"Name: {self.a.name}")
-        self._vars["in_datatype"].set(f"Data Type: {self.a.data_type}")
-        self._vars["in_samplingrate"].set(f"Sampling Rate: {self.a.fs} Hz")
-        self._vars["in_channels"].set(f"Channels: {len(self.a.channels)}")
+
+        try:
+            self.a = audiomodel.Audio(self._full_path)
+            self._vars["in_file"].set(f"Name: {self.a.name}")
+            self._vars["in_datatype"].set(f"Data Type: {self.a.data_type}")
+            self._vars["in_samplingrate"].set(f"Sampling Rate: {self.a.fs} Hz")
+            self._vars["in_channels"].set(f"Channels: {len(self.a.channels)}")
+        except FileNotFoundError:
+            return
 
 
     ########################
     # Tools Menu Functions #
     ########################
     def _shape_noise(self):
-        """ Function to create the filtered white noise.
+        """ Create NoiseShaper class to create filtered noise.
         """
         # First check that an audio file was loaded
         try:
@@ -143,49 +160,66 @@ class Application(tk.Tk):
             )
             return
 
-        # Create noise
-        noise = self.mk_wgn(self.a.fs,30)
-        dur_noise = len(noise) / self.a.fs
-        t_noise = np.arange(0,dur_noise,1/self.a.fs)
+        self.status_var.set("Status: Working...")
+        self.update_idletasks()
 
-        # P Welch of noise and stimulus tones
-        f_noise, den_noise = signal.welch(noise, self.a.fs, nperseg=2048)
-        f_stim, den_stim = signal.welch(audio_obj.modified_audio, 
-            audio_obj.fs, nperseg=2048)
+        # Create shaped noise
+        self.n = noisemodel.NoiseShaper(self.a)
+        self.n._shape_noise()
 
-        # Set number of filter taps
-        num_taps = self.filter_taps() # Must be odd
-        print(f"Number of taps: {num_taps}")
-        offset = num_taps - 1
-        """ Create even-numbered offset to remove 
-            extra points added by convolution
-            (directly related to the number of
-            taps - 1)
+        self.status_var.set("Status: Ready")
+        self.update_idletasks()
+
+        # Plot spectra
+        self._plot_spectra()
+
+
+    def _plot_spectra(self):
+        """ Plot spectrum of original audio and shaped noise 
+            for visual inspection.
         """
-        # Find delay introduced by filter
-        filt_delay = self.filter_delay(num_taps, audio_obj.fs)
-        print(f"Filter delay (s): {filt_delay}")
+        for ii in range(0,len(self.a.channels)):
+            self.status_var.set(f"Status: Plotting...")
+            self.update_idletasks()
 
-        # Create the filter
-        fir_filt = signal.firwin2(
-            numtaps=num_taps, 
-            freq=f_stim/np.max(f_stim), 
-            gain=np.sqrt(den_stim))
-        # FIR frequency response
-        w, h = signal.freqz(fir_filt)
-        w = w * audio_obj.fs / (2*np.pi)
-        # Apply FIR to noise
-        filtered_noise = np.convolve(fir_filt, noise)
-        # Normalize filtered noise
-        filtered_noise = filtered_noise / np.max(np.abs(filtered_noise))
-        # Remove the extra values added during convolution from beginning/end
-        filtered_noise = filtered_noise[:-offset]
-        #filtered_noise = filtered_noise[int(offset/2):int(-offset/2)]
-        # P Welch of filtered noise
-        f_filt_noise, den_filt_noise = signal.welch(
-            filtered_noise, audio_obj.fs, nperseg=2048)
+            # Create figure object
+            self.fig = Figure(figsize=(5.5,4), dpi=75)
+            self.ax = self.fig.add_subplot(1,1,1)
+
+            # Create axes
+            self.ax.plot(self.n.stim_pwelch[ii][0],
+                20*np.log10(self.n.stim_pwelch[ii][1]), color="blue", 
+                label="stimulus", linewidth=3)
+            self.ax.plot(self.n.noise_pwelch[ii][0],
+                20*np.log10(self.n.noise_pwelch[ii][1]), 
+                ls=":", linewidth=3, color="orange", label="Filtered Noise")
+            #self.ax.set_title("Spectra after Amplitude Correction")
+            self.ax.set_xlabel("Frequency (Hz)")
+            self.ax.set_ylabel("Amplitude")
+            self.ax.set_title(f"Frequency Spectra: Channel {ii+1}")
+            self.ax.legend()
+
+            self.canvas = FigureCanvasTkAgg(self.fig, 
+                master=self.main_view.lblfrm_plots)
+            #self.canvas.draw()
+
+            #toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+            #toolbar.update()
+
+            self.canvas.get_tk_widget().grid(column=0, row=5)
+            self.update_idletasks()
+
+            time.sleep(1)
+
+        self.status_var.set("Status: Ready")
 
 
+    #######################
+    # Help Menu Functions #
+    #######################
+    def _help(self):
+        messagebox.showinfo(title="Not Ready Yet!",
+            message="Help documentation not yet written!")
 
 
 if __name__ == "__main__":

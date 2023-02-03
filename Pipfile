@@ -11,6 +11,7 @@ scipy = "*"
 matplotlib = "*"
 sounddevice = "*"
 soundfile = "*"
+auto-py-to-exe = "*"
 
 [dev-packages]
 

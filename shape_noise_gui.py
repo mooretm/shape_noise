@@ -464,11 +464,6 @@ class Application(tk.Tk):
         self.main_frame._vars['In Data Type'].set(f'Data Type: {audio_obj.data_type}')
         self.main_frame._vars['In Sampling Rate'].set(f'Sampling Rate (Hz): {audio_obj.fs}')
 
-
-
-
-
-
         self.main_frame.fig = Figure(figsize=(5.5,4), dpi=75)
         self.main_frame.ax = self.main_frame.fig.add_subplot(1,1,1)
 
