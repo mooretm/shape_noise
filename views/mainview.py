@@ -7,6 +7,9 @@
 # Import GUI packages
 from tkinter import ttk
 
+#import customtkinter as ctk
+#ctk.set_appearance_mode('dark')
+
 # Import data science packages
 import matplotlib
 matplotlib.use('TkAgg')
@@ -32,7 +35,8 @@ class MainFrame(ttk.Frame):
         options_lbls = {'width':35}
 
         # Main container frame
-        self.frm_main = ttk.Frame(self)
+        #self.frm_main = ctk.CTkFrame(self)
+        #self.frm_main = ttk.Frame(self)
         self.frm_main.grid()
 
         # Data labelframe

@@ -12,6 +12,7 @@ matplotlib = "*"
 sounddevice = "*"
 soundfile = "*"
 auto-py-to-exe = "*"
+customtkinter = "*"
 
 [dev-packages]
 
