@@ -3,11 +3,10 @@
     RMS amplitude of the original stimulus. Useful for making 
     calibration noise for custom stimuli. 
 
-    Version 4.1.0
     Written by: Travis M. Moore
     Special thanks to: Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Mar 24, 2023
+    Last Edited: Apr 11, 2023
 """
 
 ###########
@@ -49,6 +48,7 @@ from menus import mainmenu
 from models import audiomodel
 from models import noisemodel
 from models import writemodel
+from models import updatermodel
 # Views
 from views import mainview
 
@@ -62,17 +62,28 @@ class Application(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        #############
+        # Constants #
+        #############
+        self.NAME = 'Noise Shaper'
+        self.VERSION = '5.0.0'
+        self.EDITED = 'Apr 11, 2023'
+
+
         ######################################
         # Initialize Models, Menus and Views #
         ######################################
         # Setup main window
         self.withdraw() # Hide window during setup
         self.resizable(False, False)
-        self.title("Noise Shaper")
+        self.title(self.NAME)
 
         # Create menu settings dictionary
         self._settings = {
-            'noise_type': tk.StringVar(value="uncorrelated")
+            'noise_type': tk.StringVar(value="uncorrelated"),
+            'version': self.VERSION,
+            'name': self.NAME,
+            'last_edited': self.EDITED
         }
 
         # Create variable dictionary
@@ -137,6 +148,12 @@ class Application(tk.Tk):
 
         # Center main window
         self.center_window()
+
+        # Check for updates
+        _filepath = r'\\starfile\Public\Temp\MooreT\Custom Software\version_library.csv'
+        u = updatermodel.VersionChecker(_filepath, self.NAME, self.VERSION)
+        if not u.current:
+            exit()
 
 
     #####################

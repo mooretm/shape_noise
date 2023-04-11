@@ -1,9 +1,9 @@
 # **Noise Shaper**
 
 - Written by: **Travis M. Moore**
-- Latest version: **Version 4.1.0**
+- Latest version: **Version 5.0.0**
 - Originally created: **February 28, 2023**
-- Last edited: **March 24, 2023**
+- Last edited: **April 11, 2023**
 <br>
 <br>
 

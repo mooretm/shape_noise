@@ -2,6 +2,17 @@
 
 ---
 
+## v5.0.0
+
+Date: Apr 11, 2023
+
+### Major Features
+1. Added version control model to inform users about new versions on startup. If the new version is mandatory, the app will fail with a message. 
+<br>
+<br>
+
+---
+
 ## v4.1.0
 
 Date: Mar 24, 2023

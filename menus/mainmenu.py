@@ -100,13 +100,13 @@ class MainMenu(tk.Menu):
     # HELP menu
     def show_about(self):
         """ Show the about dialog """
-        about_message = 'Noise Shaper'
+        about_message = self._settings['name']
         about_detail = (
-            'Written by: Travis M. Moore\n'
-            'Special thanks to: Daniel Smieja\n'
-            'Version 4.1.0\n'
-            'Created: Jun 17, 2022\n'
-            'Last edited: Mar 24, 2023'
+            'Written by: Travis M. Moore\n' +
+            'Special thanks to: Daniel Smieja\n' +
+            'Version {}\n'.format(self._settings['version']) +
+            'Created: Jun 17, 2022\n' +
+            'Last edited: {}'.format(self._settings['last_edited'])
         )
         messagebox.showinfo(
             title='About',
