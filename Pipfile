@@ -13,6 +13,7 @@ sounddevice = "*"
 soundfile = "*"
 auto-py-to-exe = "*"
 customtkinter = "*"
+markdown = "*"
 
 [dev-packages]
 

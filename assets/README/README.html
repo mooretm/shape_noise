@@ -1,0 +1,67 @@
+<h1><strong>Noise Shaper</strong></h1>
+<ul>
+<li>Written by: <strong>Travis M. Moore</strong></li>
+<li>Latest version: <strong>Version 4.1.0</strong></li>
+<li>Originally created: <strong>February 28, 2023</strong></li>
+<li>Last edited: <strong>March 24, 2023</strong>
+<br>
+<br></li>
+</ul>
+<hr />
+<h2>Description</h2>
+<p>Application that creates calibration files for custom stimuli. Noise Shaper filters a white Gaussian noise to the shape of the power spectral density of a given signal. Can handle single- and multi-channel audio. Only compatible with .wav files. 
+<br>
+<br></p>
+<hr />
+<h2>Getting Started</h2>
+<h3>Dependencies</h3>
+<ul>
+<li>Windows 10 or greater (not compatible with Mac OS)</li>
+</ul>
+<h3>Installing</h3>
+<ul>
+<li>This is a compiled app; the executable file is stored on Starfile at: \starfile\Public\Temp\MooreT\Custom Software</li>
+<li>Simply copy the executable file and paste to a location on the local machine</li>
+<li>Double click to start the app</li>
+</ul>
+<h3>First Use</h3>
+<ul>
+<li>Navigate to <strong>File--&gt;Import Audio...</strong> to import a custom audio stimulus. </li>
+<li>Navigate to <strong>Tools--&gt;Create Calibration File</strong> to generate a new calibration file.
+<br>
+<br></li>
+</ul>
+<hr />
+<h2>Audio File Information</h2>
+<h3>Imported File</h3>
+<p>Details regarding the imported audio will appear in the "Imported File" section. This allows verification of file name, data type, sampling rate, and number of channels.</p>
+<h3>Exported File</h3>
+<p>Details regarding the exported calibration file will appear in the "Exported File" section. This allows verification of file name, data type, sampling rate, and number of channels.</p>
+<hr />
+<h2>Power Spectral Density Comparison plot</h2>
+<p>The power spectral density of the imported audio and the newly created calibration file will be displayed in the plot area for each channel of the imported audio. You should visually inspect these plots as they appear to ensure the spectra match (i.e., overlap). </p>
+<hr />
+<h2>Creating a Calibration File</h2>
+<ul>
+<li>Navigate to <strong>File--&gt;Import Audio...</strong> to import a custom audio .wav file. </li>
+<li>Select the type of noise to use for the calibration file by choosing either "Correlated" or "Uncorrelated" from the <strong>Tools</strong> menu. <ul>
+<li>Choose "correlated" if the input audio is correlated across channels (e.g., Ambisonics files), or if you need to create several single-channel files using the same noise. </li>
+<li>Choose "uncorrelated" if your input audio is uncorrelated (most likely).</li>
+</ul>
+</li>
+<li>Navigate to <strong>Tools--&gt;Create Calibration File</strong> to generate a new calibration file.</li>
+<li>Upon completion, you will be asked if you want to export/save the newly created file.
+<br>
+<br></li>
+</ul>
+<hr />
+<h2>Compiling from Source</h2>
+<p><code>pyinstaller --noconfirm --onefile --windowed --add-data "C:/Users/MooTra/Code/Python/shape_noise/assets/README;README/"  "C:/Users/MooTra/Code/Python/shape_noise/controller.py"</code>
+<br>
+<br></p>
+<hr />
+<h2>Contact</h2>
+<p>Please use the contact information below to submit bug reports, feature requests and any other feedback. Thank you for using Noise Shaper!</p>
+<ul>
+<li>Travis M. Moore: travis_moore@starkey.com</li>
+</ul>

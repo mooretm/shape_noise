@@ -3,11 +3,11 @@
     RMS amplitude of the original stimulus. Useful for making 
     calibration noise for custom stimuli. 
 
-    Version 4.0.0
+    Version 4.1.0
     Written by: Travis M. Moore
     Special thanks to: Daniel Smieja
     Created: Jun 17, 2022
-    Last Edited: Feb 03, 2023
+    Last Edited: Mar 24, 2023
 """
 
 ###########
@@ -33,6 +33,14 @@ matplotlib.use('TkAgg')
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
+
+# Import system packages
+import os
+import sys
+
+# Import web packages
+import webbrowser
+import markdown
 
 # Import custom modules
 # Menus
@@ -62,6 +70,11 @@ class Application(tk.Tk):
         self.resizable(False, False)
         self.title("Noise Shaper")
 
+        # Create menu settings dictionary
+        self._settings = {
+            'noise_type': tk.StringVar(value="uncorrelated")
+        }
+
         # Create variable dictionary
         self._vars = {
             'in_file': tk.StringVar(value='Name:'),
@@ -82,7 +95,7 @@ class Application(tk.Tk):
         self.stim_pwelch = {}
 
         # Load menus
-        menu = mainmenu.MainMenu(self)
+        menu = mainmenu.MainMenu(self, self._settings)
         self.config(menu=menu)
 
         # Load noisemodel
@@ -148,6 +161,18 @@ class Application(tk.Tk):
         self.destroy()
 
 
+    def resource_path(self, relative_path):
+        """ Get the absolute path to compiled resources
+        """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
+
+
     #######################
     # File Menu Functions #
     #######################
@@ -168,20 +193,42 @@ class Application(tk.Tk):
 
 
     def _export(self):
-        """ Write all filtered noises as single .wav file.
+        """ Write created calibration file to disk.
         """
-        # Convert to df
+        # Convert filtered noise(s) df
         df = pd.DataFrame(self.filtered_noises)
+
         # Create output file name based on input file name
-        filename = self.a.name[:-4] + '_cal.wav'
-        # Write .wav to current directory
-        sf.write(filename, df, self.a.fs)
+        try:
+            filename = self.a.name[:-4] + '_cal.wav'
+        except AttributeError:
+            messagebox.showerror(
+                title="File Not Found",
+                message="Nothing to export!",
+                detail="First create a calibration file!"
+            )
+            return
+
+        # Get save path
+        try:
+            file_path = filedialog.asksaveasfile(
+                initialfile = filename,
+                defaultextension='.wav').name
+        except AttributeError:
+            return
+            
+        # Write calibration file    
+        sf.write(file_path, df, self.a.fs)
 
         # Update labels with exported audio info
         self._vars["out_file"].set(f"Name: {filename}")
         self._vars["out_datatype"].set(f"Data Type: {str(df.dtypes[0])}")
         self._vars["out_samplingrate"].set(f"Sampling Rate: {self.a.fs} Hz")
         self._vars["out_channels"].set(f"Channels: {len(df.columns)}")
+
+        # Feedback to user
+        messagebox.showinfo(title="Success", 
+            message="Save successful!")
 
 
     ########################
@@ -205,7 +252,14 @@ class Application(tk.Tk):
             self.update_idletasks()
 
             # Create shaped noise
-            self.n._shape_noise(self.a.signal[:, ii], self.a.fs)
+            if self.a.num_channels > 1:
+                print("controller: Found multi-channel audio")
+                self.n._shape_noise(self._settings['noise_type'].get(), 
+                                    self.a.signal[:, ii], self.a.fs)
+            elif self.a.num_channels == 1:
+                print("controller: Found single-channel audio")
+                self.n._shape_noise(self._settings['noise_type'].get(), 
+                    self.a.signal, self.a.fs)
 
             # Fill dicts with iteration values
             self.filtered_noises[ii] = self.n.adj_filtered_noise
@@ -218,6 +272,15 @@ class Application(tk.Tk):
             self.update_idletasks()
 
         self.status_var.set(f"Status: Ready")
+
+        # Prompt save
+        resp = messagebox.askquestion(
+            title="File Export", 
+            message="Do you want to export the created calibration file?")
+        if resp == 'yes':
+            self._export()
+        else: 
+            return
 
 
     def _plot_spectra(self, channel):
@@ -255,9 +318,29 @@ class Application(tk.Tk):
     # Help Menu Functions #
     #######################
     def _help(self):
-        messagebox.showinfo(title="Not Ready Yet!",
-            message="Help documentation not yet written!" +
-                "\nGo find Travis (unless he's cranky...)")
+        """ Create html help file and display in default browser
+        """
+        print("\ncontroller: Looking for help file in compiled " +
+            "version temp location...")
+        help_file = self.resource_path('README\\README.html')
+        file_exists = os.access(help_file, os.F_OK)
+        if not file_exists:
+            print('controller: Not found!\nChecking for help file in ' +
+                'local script version location')
+            # Read markdown file and convert to html
+            with open('README.md', 'r') as f:
+                text = f.read()
+                html = markdown.markdown(text)
+
+            # Create html file for display
+            with open('.\\assets\\README\\README.html', 'w') as f:
+                f.write(html)
+
+            # Open README in default web browser
+            webbrowser.open('.\\assets\\README\\README.html')
+        else:
+            help_file = self.resource_path('README\\README.html')
+            webbrowser.open(help_file)
 
 
 if __name__ == "__main__":

@@ -22,12 +22,13 @@ class NoiseShaper:
     """ Class to create noise, filter, and perform filtering.
     """
 
-    def _shape_noise(self, audio, fs):
+    def _shape_noise(self, noise_type, audio, fs):
         """ Create white Gaussian noise. Create filter shaped like 
             the spectrum of the provided audio file. Pass the 
             noise through the filter. Adjust RMS amplitude of noise 
             to match RMS amplitude of audio file.
         """
+        self.noise_type = noise_type
         self.audio = audio
         self.fs = fs
 
@@ -41,9 +42,9 @@ class NoiseShaper:
     def _create_noise(self):
         print("\nnoisemodel: Creating white noise...")
         # Create noise
-        self.noise = self.mk_wgn(self.fs,30)
+        self.noise = self.mk_wgn(self.fs, 30)
         self.dur_noise = len(self.noise) / self.fs
-        self.t_noise = np.arange(0,self.dur_noise,1/self.fs)
+        self.t_noise = np.arange(0, self.dur_noise, 1/self.fs)
 
         # P Welch of noise and audio file
         #f_noise, den_noise = signal.welch(self.noise, self.fs, nperseg=2048)
@@ -145,7 +146,12 @@ class NoiseShaper:
     def mk_wgn(self, fs, dur):
         """ Function to generate white Gaussian noise.
         """
-        #random.seed(4)
+        if self.noise_type == "correlated":
+            print(f"noisemodel: Using correlated noise")
+            random.seed(4)
+        else:
+            print(f"noisemodel: Using uncorrelated noise")
+        
         wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
         wgn = self.doNormalize(wgn)
         return wgn

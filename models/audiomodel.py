@@ -58,7 +58,10 @@ class Audio:
                 raise FileNotFoundError
 
         # Get number of channels
-        self.num_channels = self.signal.shape[1]
+        try:
+            self.num_channels = self.signal.shape[1]
+        except IndexError:
+            self.num_channels = 1
         self.channels = np.array(range(1, self.num_channels+1))
         print(f"audiomodel: Number of channels: {self.num_channels}")
 

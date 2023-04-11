@@ -15,10 +15,17 @@ class MainMenu(tk.Menu):
             root = self.master.winfo_toplevel()
             root.event_generate(sequence)
         return callback
+    
+
+    def _bind_accelerators(self):
+        self.bind_all('<Control-q>', self._event('<<FileQuit>>'))
 
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, settings, **kwargs):
         super().__init__(parent, **kwargs)
+
+        # Instantiate
+        self._settings = settings
 
         #############
         # File menu #
@@ -28,14 +35,16 @@ class MainMenu(tk.Menu):
             label="Import Audio...",
             command=self._event('<<FileImport>>')
         )
+        file_menu.add_separator()
         file_menu.add_command(
-            label="Export Noise...",
+            label="Export Cal File...",
             command=self._event('<<FileExport>>')
         )
         file_menu.add_separator()
         file_menu.add_command(
             label="Quit",
-            command=self._event('<<FileQuit>>')
+            command=self._event('<<FileQuit>>'),
+            accelerator='Crtl+Q'
         )
         self.add_cascade(label='File', menu=file_menu)
 
@@ -45,8 +54,19 @@ class MainMenu(tk.Menu):
         ##############
         tools_menu = tk.Menu(self, tearoff=False)
         tools_menu.add_command(
-            label='Create Noise',
+            label='Create Cal File',
             command=self._event('<<ToolsShapeNoise>>')
+        )
+        tools_menu.add_separator()
+        tools_menu.add_radiobutton(
+            label='Correlated',
+            value='correlated',
+            variable=self._settings['noise_type']
+        )
+        tools_menu.add_radiobutton(
+            label='Uncorrelated',
+            value='uncorrelated',
+            variable=self._settings['noise_type']
         )
         # Add Tools menu to the menubar
         self.add_cascade(label="Tools", menu=tools_menu)
@@ -57,15 +77,21 @@ class MainMenu(tk.Menu):
         #############
         help_menu = tk.Menu(self, tearoff=False)
         help_menu.add_command(
-            label='About',
+            label='About...',
             command=self.show_about
         )
         help_menu.add_command(
-            label='Help',
+            label='Help...',
             command=self._event('<<HelpHelp>>')
         )
         # Add help menu to the menubar
         self.add_cascade(label="Help", menu=help_menu)
+
+
+        ######################
+        # Bind shortcut keys #
+        ######################
+        self._bind_accelerators()
 
 
     ##################
@@ -78,9 +104,9 @@ class MainMenu(tk.Menu):
         about_detail = (
             'Written by: Travis M. Moore\n'
             'Special thanks to: Daniel Smieja\n'
-            'Version 4.0.0\n'
+            'Version 4.1.0\n'
             'Created: Jun 17, 2022\n'
-            'Last edited: Feb 03, 2023'
+            'Last edited: Mar 24, 2023'
         )
         messagebox.showinfo(
             title='About',

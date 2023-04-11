@@ -36,7 +36,7 @@ class MainFrame(ttk.Frame):
 
         # Main container frame
         #self.frm_main = ctk.CTkFrame(self)
-        #self.frm_main = ttk.Frame(self)
+        self.frm_main = ttk.Frame(self)
         self.frm_main.grid()
 
         # Data labelframe
@@ -44,7 +44,7 @@ class MainFrame(ttk.Frame):
             text="Audio File Information")
         self.lfrm_Data.grid(row=0, column=0, sticky='nsew', **options_data)
 
-        # INput labelrame
+        # INput labelframe
         self.lfrm_Input = ttk.LabelFrame(self.lfrm_Data, text="Imported File")
         self.lfrm_Input.grid(row=1, column=0, **options_data)
 
@@ -52,10 +52,14 @@ class MainFrame(ttk.Frame):
         self.lfrm_Output = ttk.LabelFrame(self.lfrm_Data, text="Exported File")
         self.lfrm_Output.grid(row=1, column=1, **options_data)
 
+        # Options labelframe
+        self.lfrm_options = ttk.LabelFrame(self.frm_main, text="Options")
+        self.lfrm_options.grid(column=0, row=5, sticky='nsew', **options_data)
+
         # Plot labelframe
         self.lblfrm_plots = ttk.LabelFrame(self.frm_main, 
             text="Power Spectral Density Comparison Plot")
-        self.lblfrm_plots.grid(column=0, row=5, ipadx=5, ipady=5, padx=10, 
+        self.lblfrm_plots.grid(column=0, row=10, ipadx=5, ipady=5, padx=10, 
             pady=10)
 
 
@@ -89,6 +93,9 @@ class MainFrame(ttk.Frame):
         # Channels
         ttk.Label(self.lfrm_Output, textvariable=self._vars['out_channels'],
             **options_lbls).grid(row=3, column=0, sticky='w')
+
+        # Options
+        
 
         # Create plot
         self.fig = Figure(figsize=(5.5,4), dpi=75)
