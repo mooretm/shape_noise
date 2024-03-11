@@ -5,3 +5,6 @@ __pycache__
 /output
 *.wav
 /OLD
+/venv
+/standalone_script
+

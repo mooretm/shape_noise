@@ -1,17 +1,17 @@
-""" Class that handles shaping white Gaussian noise. """
+""" Class that handles shaping white Gaussian noise.
+"""
 
 ###########
 # Imports #
 ###########
-# GUI
+# Import GUI packages
 from tkinter import messagebox
 
-# Data Science
+# Import data science packages
 import numpy as np
 import random
 from scipy import signal
 
-# System
 import sys
 
 
@@ -19,21 +19,18 @@ import sys
 # BEGIN #
 #########
 class NoiseShaper:
-    """ Create filtered noise based on the power spectral
-        density of a given audio signal.
+    """ Class to create noise, filter, and perform filtering.
     """
-    def shape_noise(self, audio, fs, correlated):
+
+    def shape_noise(self, noise_type, audio, fs):
         """ Create white Gaussian noise. Create filter shaped like 
             the spectrum of the provided audio file. Pass the 
             noise through the filter. Adjust RMS amplitude of noise 
             to match RMS amplitude of audio file.
-
-            :returns: a filtered white Gaussian noise
         """
-        # Assign public attributes
+        self.noise_type = noise_type
         self.audio = audio
         self.fs = fs
-        self.correlated = correlated
 
         # Create noise
         self._create_noise()
@@ -41,54 +38,40 @@ class NoiseShaper:
         # Create filtered noise
         self._create_filter()
 
-        # Return calibration noise
-        return self.adj_filtered_noise
-
 
     def _create_noise(self):
-        """ Create and prepare Gaussian noise. """
-        print("noisemodel: Creating white noise")
+        print("\nnoisemodel: Creating white noise...")
         # Create noise
         self.noise = self.mk_wgn(self.fs, 30)
         self.dur_noise = len(self.noise) / self.fs
         self.t_noise = np.arange(0, self.dur_noise, 1/self.fs)
 
         # P Welch of noise and audio file
+        #f_noise, den_noise = signal.welch(self.noise, self.fs, nperseg=2048)
         self.f_stim, self.den_stim = signal.welch(
             self.audio, self.fs, nperseg=2048)
-
-
-    def mk_wgn(self, fs, dur):
-        """ Function to generate white Gaussian noise. """
-        if self.correlated:
-            print(f"noisemodel: Using correlated noise")
-            random.seed(4)
-        else:
-            print(f"noisemodel: Using uncorrelated noise")
-        
-        wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
-        wgn = self._doNormalize(wgn)
-
-        return wgn
+        print("noisemodel: Done")
 
 
     ####################
     # Filter Functions #
     ####################
     def _create_filter(self):
+        print(f"noisemodel: Creating filter...")
+
+        # Set number of filter taps
+        num_taps = self.filter_taps() # Must be odd
+        #print(f"Number of taps: {num_taps}")
+        offset = num_taps - 1
         """ Create even-numbered offset to remove 
             extra points added by convolution
             (directly related to the number of
             taps - 1)
         """
-        print(f"noisemodel: Creating filter")
-        # Set number of filter taps
-        num_taps = self._filter_taps() # Must be odd
-        offset = num_taps - 1
 
-        # # Find delay introduced by filter
-        # filt_delay = self._filter_delay(num_taps, self.fs)
-        # print(f"Filter delay (s): {filt_delay}")
+        # Find delay introduced by filter
+        #filt_delay = self.filter_delay(num_taps, self.fs)
+        #print(f"Filter delay (s): {filt_delay}")
 
         # Create the filter
         fir_filt = signal.firwin2(
@@ -99,14 +82,16 @@ class NoiseShaper:
         # FIR frequency response
         w, h = signal.freqz(fir_filt)
         w = w * self.fs / (2*np.pi)
+        print("noisemodel: Done")
 
         # Call function to apply filter
         self._apply_filter(fir_filt, offset)
 
 
     def _apply_filter(self, filter, offset):
-        """ Convolve noise with filter. """
-        print("noisemodel: Applying filter to noise")
+        """ Pass noise through filter.
+        """
+        print("noisemodel: Filtering noise...")
         # Apply FIR to noise
         filtered_noise = np.convolve(filter, self.noise)
         # Normalize filtered noise
@@ -116,82 +101,82 @@ class NoiseShaper:
         # P Welch of filtered noise
         f_filt_noise, den_filt_noise = signal.welch(
             filtered_noise, self.fs, nperseg=2048)
+        print("noisemodel: Done")
 
-        # Equalize RMS
         self._correct_amplitude(filtered_noise)
 
 
     def _correct_amplitude(self, filtered_noise):
-        """ Set the RMS of the noise to the RMS of the signal. """
-        print("noisemodel: Matching amplitudes")
-        # Get RMS of audio
-        rms_stim = self._rms(self.audio)
-        # Apply gating to filtered noise
-        filtered_noise = self._doGate(sig=filtered_noise,
+        print("noisemodel: Matching amplitudes...")
+        rms_stim = self.rms(self.audio)
+        filtered_noise = self.doGate(sig=filtered_noise,
             rampdur=0.02,fs=self.fs)
-        # Normalize gated filtered noise
-        filtered_noise = self._doNormalize(filtered_noise)
-        # Get RMS of gated and normalized filtered noise
-        rms_filt_noise = self._rms(filtered_noise)
-        # Get difference in RMS between signal and noise
+        filtered_noise = self.doNormalize(filtered_noise)
+        rms_filt_noise = self.rms(filtered_noise)
         amp_diff =  rms_stim / rms_filt_noise
         print(f"noisemodel: RMS of stimulus: {np.round(rms_stim, 5)}")
-        # Apply RMS offset to noise to equate RMS levels
+        #print(f"noisemodel: RMS of filtered noise: {np.round(rms_filt_noise, 5)}")
+        #print(f"noisemodel: RMS diff: {np.round(amp_diff, 5)}")
         self.adj_filtered_noise = filtered_noise * amp_diff
-        # Find PSD of final noise
         self.f_adj_filt_noise, self.den_adj_filt_noise = signal.welch(
             self.adj_filtered_noise, self.fs, nperseg=2048)
         print(f"noisemodel: RMS of adjusted filtered noise: " +
-            f"{np.round(self._rms(self.adj_filtered_noise), 5)}")
+            f"{np.round(self.rms(self.adj_filtered_noise), 5)}")
+        print("noisemodel: Done")
 
 
     ###################################
     # Noise Shaping Support Functions #
     ###################################
-    @staticmethod
-    def _filter_delay(num_taps, fs):
-        """ Calculate filter delay. """
+    def filter_delay(self, num_taps, fs):
         filt_delay = (num_taps - 1) / (2 * fs)
         return filt_delay
 
 
-    @staticmethod
-    def _filter_taps(d1=10**-4, d2=10**-3, Df=1000):
+    def filter_taps(self, d1=10**-4, d2=10**-3, Df=1000):
         """ Determine number of filter taps. Based on:
             https://dsp.stackexchange.com/questions/31066/how-many-taps-does-an-fir-filter-need
         """
         num_taps = int((2/3)*np.log10(1/(10*d1*d2))*Df)
         if not num_taps % 2:
             num_taps += 1
-
         return num_taps
 
 
-    @staticmethod
-    def _doNormalize(sig):
-        """ Remove DC offset and normalize by max value. """
-        # remove DC offset
-        sig = sig - np.mean(sig)
-        # normalize
-        sig = sig / np.max(abs(sig))
+    def mk_wgn(self, fs, dur):
+        """ Function to generate white Gaussian noise.
+        """
+        if self.noise_type == "correlated":
+            print(f"noisemodel: Using correlated noise")
+            random.seed(4)
+        else:
+            print(f"noisemodel: Using uncorrelated noise")
+        
+        wgn = [random.gauss(0.0, 1.0) for i in range(fs*dur)]
+        wgn = self.doNormalize(wgn)
+        return wgn
 
+
+    def doNormalize(self, sig):
+        sig = sig - np.mean(sig) # remove DC offset
+        sig = sig / np.max(abs(sig)) # normalize
         return sig
 
 
-    @staticmethod
-    def _check_for_clipping(adj_filtered_noise):
-        """ Check for clipping in the final noise. """
+    def _check_for_clipping(self, adj_filtered_noise):
+        clip_flag = False
         max_amp = np.max(abs(adj_filtered_noise))
         if max_amp > 1:
-            print("noisemodel: Clipping has occurred!\n" +
-                  "Calibration file not created!")
+            print("Oh no! Some values are clipping!\nCalibration file not created!")
+            clip_flag = True
             messagebox.showerror(
                 title="Clipping!",
                 message="There is clipping in the output file!",
                 detail="If the original audio file is near the +1/-1 " +
                     "limits, some noise fluctuations will exceed these  " +
-                    "boundaries and cause clipping\n" +
+                    "boundaries and cause (potentially mild) clipping\n" +
                     "Aborting."
+
             )
             sys.exit()
         else:
@@ -199,8 +184,9 @@ class NoiseShaper:
 
 
     @staticmethod
-    def _db2mag(db):
-        """ Convert decibels to magnitude. Takes a single
+    def db2mag(db):
+        """ 
+            Convert decibels to magnitude. Takes a single
             value or a list of values.
         """
         # Must use this form to handle negative db values!
@@ -213,8 +199,9 @@ class NoiseShaper:
 
 
     @staticmethod
-    def _mag2db(mag):
-        """ Convert magnitude to decibels. Takes a single
+    def mag2db(mag):
+        """ 
+            Convert magnitude to decibels. Takes a single
             value or a list of values.
         """
         try:
@@ -225,9 +212,9 @@ class NoiseShaper:
             return db
 
 
-    @staticmethod
-    def _doGate(sig, rampdur=0.02, fs=48000):
-        """ Apply rising and falling ramps to signal SIG, of 
+    def doGate(self,sig,rampdur=0.02,fs=48000):
+        """
+            Apply rising and falling ramps to signal SIG, of 
             duration RAMPDUR. Takes a 1-channel or 2-channel 
             signal. 
 
@@ -238,7 +225,7 @@ class NoiseShaper:
 
                 Example: 
                 [t, tone] = mkTone(100,0.4,0,48000)
-                gated = _doGate(tone,0.01,48000)
+                gated = doGate(tone,0.01,48000)
 
             Original code: Anonymous
             Adapted by: Travis M. Moore
@@ -266,9 +253,9 @@ class NoiseShaper:
         return gated
 
 
-    @staticmethod
-    def _rms(sig):
-        """ Calculate the root mean square of a signal. 
+    def rms(self, sig):
+        """ 
+            Calculate the root mean square of a signal. 
             
             NOTE: np.square will return invalid, negative 
                 results if the number excedes the bit 
@@ -280,7 +267,3 @@ class NoiseShaper:
         """
         theRMS = np.sqrt(np.mean(np.square(sig)))
         return theRMS
-
-
-if __name__ == "__main__":
-    pass

@@ -60,12 +60,14 @@ class MainMenu(tk.Menu):
         tools_menu.add_separator()
         tools_menu.add_radiobutton(
             label='Correlated',
-            value='correlated',
+            #value='correlated',
+            value=True,
             variable=self._settings['noise_type']
         )
         tools_menu.add_radiobutton(
             label='Uncorrelated',
-            value='uncorrelated',
+            #value='uncorrelated',
+            value=False,
             variable=self._settings['noise_type']
         )
         # Add Tools menu to the menubar

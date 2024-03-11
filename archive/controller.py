@@ -6,6 +6,7 @@
     Written by: Travis M. Moore
     Special thanks to: Daniel Smieja
     Created: Jun 17, 2022
+    Last Edited: Apr 11, 2023
 """
 
 ###########
@@ -46,7 +47,7 @@ from menus import mainmenu
 # Models
 from models import audiomodel
 from models import noisemodel
-#from models import writemodel
+from archive import writemodel
 from models import updatermodel
 # Views
 from views import mainview
@@ -66,7 +67,7 @@ class Application(tk.Tk):
         #############
         self.NAME = 'Noise Shaper'
         self.VERSION = '5.0.0'
-        self.EDITED = 'Mar 11, 2024'
+        self.EDITED = 'Apr 11, 2023'
 
 
         ######################################
@@ -79,8 +80,7 @@ class Application(tk.Tk):
 
         # Create menu settings dictionary
         self._settings = {
-            'noise_type': tk.BooleanVar(value=False),
-            #'noise_type': tk.StringVar(value="uncorrelated"),
+            'noise_type': tk.StringVar(value="uncorrelated"),
             'version': self.VERSION,
             'name': self.NAME,
             'last_edited': self.EDITED
@@ -113,7 +113,7 @@ class Application(tk.Tk):
         self.n = noisemodel.NoiseShaper()
 
         # Load writemodel
-        #self.w = writemodel.WriteModel()
+        self.w = writemodel.WriteModel()
 
         # Load main view
         self.main_view = mainview.MainFrame(self, self._vars)
@@ -160,7 +160,8 @@ class Application(tk.Tk):
     # General Functions #
     #####################
     def center_window(self):
-        """ Center the root window. """
+        """ Center the root window 
+        """
         self.update_idletasks()
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -172,12 +173,14 @@ class Application(tk.Tk):
 
     
     def _quit(self):
-        """ Exit the application. """
+        """ Exit the application.
+        """
         self.destroy()
 
 
     def resource_path(self, relative_path):
-        """ Get the absolute path to compiled resources. """
+        """ Get the absolute path to compiled resources
+        """
         try:
             # PyInstaller creates a temp folder and stores path in _MEIPASS
             base_path = sys._MEIPASS
@@ -207,7 +210,8 @@ class Application(tk.Tk):
 
 
     def _export(self):
-        """ Write created calibration file to disk. """
+        """ Write created calibration file to disk.
+        """
         # Convert filtered noise(s) df
         df = pd.DataFrame(self.filtered_noises)
 
@@ -248,7 +252,8 @@ class Application(tk.Tk):
     # Tools Menu Functions #
     ########################
     def _shape_noise(self):
-        """ Create NoiseShaper class to create filtered noise. """
+        """ Create NoiseShaper class to create filtered noise.
+        """
         # First check that an audio file was loaded
         try:
             self.a.name
@@ -260,25 +265,18 @@ class Application(tk.Tk):
             return
 
         for ii in range(0, len(self.a.channels)):
-            self.status_var.set(f"Status: Processing channel {ii+1} of " +
-                                f"{len(self.a.channels)}")
+            self.status_var.set(f"Status: Processing channel {ii+1}...")
             self.update_idletasks()
 
             # Create shaped noise
             if self.a.num_channels > 1:
-                #print("controller: Found multi-channel audio")
-                self.n.shape_noise(
-                    audio=self.a.signal[:, ii],
-                    fs=self.a.fs,
-                    correlated=self._settings['noise_type'].get()
-                )
+                print("controller: Found multi-channel audio")
+                self.n.shape_noise(self._settings['noise_type'].get(), 
+                                    self.a.signal[:, ii], self.a.fs)
             elif self.a.num_channels == 1:
-                #print("controller: Found single-channel audio")
-                self.n.shape_noise(
-                    audio=self.a.signal,
-                    fs=self.a.fs,
-                    correlated=self._settings['noise_type'].get()
-                )
+                print("controller: Found single-channel audio")
+                self.n.shape_noise(self._settings['noise_type'].get(), 
+                    self.a.signal, self.a.fs)
 
             # Fill dicts with iteration values
             self.filtered_noises[ii] = self.n.adj_filtered_noise
@@ -337,7 +335,8 @@ class Application(tk.Tk):
     # Help Menu Functions #
     #######################
     def _help(self):
-        """ Create html help file and display in default browser. """
+        """ Create html help file and display in default browser
+        """
         print("\ncontroller: Looking for help file in compiled " +
             "version temp location...")
         help_file = self.resource_path('README\\README.html')
